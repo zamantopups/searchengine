@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G-11 Markaz</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Base styles from user, with minor tweaks */
+        body {
+            font-family: 'Roboto Mono', monospace;
+            cursor: crosshair;
+            background-color: #0d121c;
+        }
+
+        .hud-panel {
+            background-color: rgba(26, 34, 50, 0.4);
+            border: 1px solid rgba(49, 68, 100, 0.6);
+            backdrop-filter: blur(5px);
+            border-radius: 0.5rem;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .hud-text-label {
+            color: #60a5fa;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .form-input {
+            background-color: transparent;
+            border-bottom: 1px solid rgba(49, 68, 100, 0.6);
+            color: #fff;
+            padding: 0.5rem;
+            width: 100%;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .form-input:focus {
+            border-color: #60a5fa;
+        }
+
+        .btn {
+            background-color: #60a5fa;
+            color: #0d121c;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.3s;
+            box-shadow: 0 4px 15px rgba(96, 165, 250, 0.3);
+        }
+        .btn:hover {
+            background-color: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: #0d121c;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            border: 1px solid rgba(49, 68, 100, 0.6);
+            max-width: 90%;
+            max-height: 90%;
+            overflow-y: auto;
+            animation: fadeIn 0.3s ease-out;
+            position: relative;
+        }
+
+        .static-map-image {
+            width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .search-result-item {
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .search-result-item:hover {
+            background-color: rgba(49, 68, 100, 0.2);
+            transform: translateX(5px);
+        }
+    </style>
+</head>
+
+<body class="bg-[#0d121c] text-white flex items-center justify-center p-4 min-h-screen">
+
+    <div class="w-full max-w-xl">
+        <!-- Logo and Name -->
+        <div class="flex items-center justify-center mb-8">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12 text-red-500 mr-4 animate-pulse">
+                <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm0 1.5a8.25 8.25 0 100 16.5 8.25 8.25 0 000-16.5zM12 6a6 6 0 110 12 6 6 0 010-12zm-2.25 7.5a.75.75 0 01.75-.75h3a.75.75 0 010 1.5h-3a.75.75 0 01-.75-.75zm.75-4.5a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5h-1.5z" clip-rule="evenodd" />
+            </svg>
+            <h1 class="text-3xl font-bold text-gray-200">G-11 Markaz</h1>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="flex justify-center gap-4 mb-4">
+            <button id="showSearch" class="btn">Search</button>
+            <button id="showForm" class="btn">Add Shop</button>
+        </div>
+
+        <!-- Search Panel -->
+        <div id="searchView" class="hud-panel">
+            <span class="hud-text-label">Search Terminal</span>
+            <input type="text" id="searchInput" placeholder="> Search by shop name or business..." class="form-input">
+            <div id="searchResults" class="text-sm text-gray-400 mt-2 flex flex-col gap-2">
+                <p class="text-green-400">STATUS: Awaiting search query...</p>
+            </div>
+        </div>
+
+        <!-- Form Panel (initially hidden) -->
+        <div id="formView" class="hud-panel hidden">
+            <span class="hud-text-label">Add New Shop</span>
+            <form id="shopForm" class="flex flex-col gap-4">
+                <input type="text" id="shopName" placeholder="Shop Name" required class="form-input">
+                <input type="text" id="business" placeholder="Business (e.g., General Store)" required class="form-input">
+                <input type="text" id="shopAddress" placeholder="Shop Address" required class="form-input">
+                <input type="text" id="ownerName" placeholder="Owner Name" required class="form-input">
+                <input type="text" id="ownerNumber" placeholder="Owner Number" required class="form-input">
+                <input type="text" id="pinLocation" placeholder="Pin Location (e.g., 33.6844, 73.0479)" required class="form-input">
+                <p class="text-xs text-gray-400">Please enter latitude and longitude separated by a comma (e.g., 33.6844, 73.0479)</p>
+                <button type="submit" id="addShopBtn" class="btn mt-4">Add Shop</button>
+            </form>
+            <div id="formStatus" class="text-sm mt-4"></div>
+        </div>
+    </div>
+
+    <!-- Shop Details Modal -->
+    <div id="shopDetailsModal" class="modal hidden">
+        <div class="modal-content hud-panel">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="modalShopName" class="text-xl font-bold text-blue-400"></h2>
+                <button id="closeModalBtn" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            <div id="modalDetails" class="text-sm text-gray-300 flex flex-col gap-2">
+                <!-- Shop details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Globals (Provided by Canvas Environment) ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db;
+        let auth;
+        let shops = [];
+        let userId = 'localUser'; // Placeholder until auth is ready
+
+        // --- DOM Elements ---
+        const searchView = document.getElementById('searchView');
+        const formView = document.getElementById('formView');
+        const showSearchBtn = document.getElementById('showSearch');
+        const showFormBtn = document.getElementById('showForm');
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+        const shopForm = document.getElementById('shopForm');
+        const addShopBtn = document.getElementById('addShopBtn');
+        const formStatus = document.getElementById('formStatus');
+
+        const shopDetailsModal = document.getElementById('shopDetailsModal');
+        const modalShopName = document.getElementById('modalShopName');
+        const modalDetails = document.getElementById('modalDetails');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+
+        // --- Firebase Initialization and Authentication ---
+        async function initializeFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                userId = auth.currentUser?.uid || crypto.randomUUID();
+                
+                console.log("Firebase initialized and user authenticated:", userId);
+                
+                // Start listening for real-time updates after auth is complete
+                setupRealtimeListener();
+
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                formStatus.innerHTML = `<p class="text-red-400">Error: Could not connect to the database.</p>`;
+            }
+        }
+        
+        // --- Real-time Data Listener ---
+        function setupRealtimeListener() {
+            const shopsCollection = collection(db, `artifacts/${appId}/public/data/shops`);
+            onSnapshot(shopsCollection, (snapshot) => {
+                shops = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log("Shops updated from database:", shops);
+                renderSearchResults(searchInput.value);
+            }, (error) => {
+                console.error("Error fetching shops:", error);
+            });
+        }
+        
+        // --- View Switching Functionality ---
+        function showView(view) {
+            searchView.classList.add('hidden');
+            formView.classList.add('hidden');
+            if (view === 'search') {
+                searchView.classList.remove('hidden');
+            } else if (view === 'form') {
+                formView.classList.remove('hidden');
+            }
+        }
+
+        // --- Render Search Results ---
+        const renderSearchResults = (query) => {
+            const lowerCaseQuery = query.toLowerCase().trim();
+            const results = shops.filter(shop =>
+                shop.shopName.toLowerCase().includes(lowerCaseQuery) ||
+                shop.business.toLowerCase().includes(lowerCaseQuery)
+            );
+            
+            searchResults.innerHTML = '';
+
+            if (lowerCaseQuery === '') {
+                searchResults.innerHTML = '<p class="text-green-400">STATUS: Awaiting search query...</p>';
+                return;
+            }
+
+            if (results.length > 0) {
+                results.forEach(shop => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'search-result-item p-2 rounded-md';
+                    resultDiv.onclick = () => showShopDetails(shop.id);
+                    resultDiv.innerHTML = `
+                        <h3 class="text-lg text-white font-bold">${shop.shopName}</h3>
+                        <p class="text-gray-400 text-sm">${shop.business}</p>
+                    `;
+                    searchResults.appendChild(resultDiv);
+                });
+            } else {
+                searchResults.innerHTML = '<p class="text-red-400">STATUS: NO MATCHES FOUND</p>';
+            }
+        };
+
+        // --- Show Shop Details Modal ---
+        const showShopDetails = (shopId) => {
+            const shop = shops.find(s => s.id === shopId);
+            if (!shop) {
+                console.error("Shop not found with ID:", shopId);
+                return;
+            }
+            
+            const [lat, lon] = shop.pinLocation.split(',').map(coord => parseFloat(coord.trim()));
+            let mapHtml = '';
+            if (!isNaN(lat) && !isNaN(lon)) {
+                const mapLink = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=16/${lat}/${lon}`;
+                mapHtml = `
+                    <div class="mt-4">
+                        <p class="text-sm text-cyan-400">Map Location</p>
+                        <a href="${mapLink}" target="_blank" class="text-blue-400 hover:text-blue-300 underline">Open in OpenStreetMap</a>
+                    </div>
+                `;
+            } else {
+                mapHtml = `<p class="text-red-400">Invalid location format.</p>`;
+            }
+
+            modalShopName.textContent = shop.shopName;
+            modalDetails.innerHTML = `
+                <div class="space-y-2">
+                    <p><span class="text-cyan-400">Business:</span> <span class="text-white">${shop.business}</span></p>
+                    <p><span class="text-cyan-400">Address:</span> <span class="text-white">${shop.shopAddress}</span></p>
+                    <p><span class="text-cyan-400">Owner:</span> <span class="text-white">${shop.ownerName}</span></p>
+                    <p><span class="text-cyan-400">Number:</span> <span class="text-white">${shop.ownerNumber}</span></p>
+                    <p><span class="text-cyan-400">Pin Location:</span> <span class="text-blue-400">${shop.pinLocation}</span></p>
+                </div>
+                ${mapHtml}
+                <p class="text-xs text-gray-500 mt-4">Added by User ID: ${shop.addedByUserId}</p>
+            `;
+            
+            shopDetailsModal.classList.remove('hidden');
+        };
+
+        // --- Event Listeners ---
+        showSearchBtn.addEventListener('click', () => showView('search'));
+        showFormBtn.addEventListener('click', () => showView('form'));
+
+        searchInput.addEventListener('input', (e) => {
+            renderSearchResults(e.target.value);
+        });
+
+        shopForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            formStatus.innerHTML = '<p class="text-yellow-400">Adding shop...</p>';
+            addShopBtn.disabled = true;
+
+            const shopData = {
+                shopName: document.getElementById('shopName').value,
+                business: document.getElementById('business').value,
+                shopAddress: document.getElementById('shopAddress').value,
+                ownerName: document.getElementById('ownerName').value,
+                ownerNumber: document.getElementById('ownerNumber').value,
+                pinLocation: document.getElementById('pinLocation').value,
+                addedByUserId: userId,
+                timestamp: new Date().toISOString()
+            };
+
+            try {
+                const shopsCollection = collection(db, `artifacts/${appId}/public/data/shops`);
+                await addDoc(shopsCollection, shopData);
+                formStatus.innerHTML = '<p class="text-green-400">Shop added successfully!</p>';
+                shopForm.reset();
+            } catch (error) {
+                console.error("Error adding shop:", error);
+                formStatus.innerHTML = `<p class="text-red-400">Error: ${error.message}</p>`;
+            } finally {
+                addShopBtn.disabled = false;
+            }
+        });
+        
+        closeModalBtn.addEventListener('click', () => {
+            shopDetailsModal.classList.add('hidden');
+        });
+
+        // Make functions available in the global scope for event handlers in HTML
+        window.showShopDetails = showShopDetails;
+
+        // Initialize the app
+        window.onload = initializeFirebase;
+    </script>
+</body>
+</html>
