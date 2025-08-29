@@ -211,7 +211,7 @@
         // --- Firebase Initialization and Authentication ---
         async function initializeFirebase() {
             try {
-                if (!firebaseConfig.apiKey) {
+                 if (!firebaseConfig.apiKey) {
                     console.error("Firebase config not found. Running in local mode.");
                     formStatus.innerHTML = `<p class="text-red-400">ERROR: FIREBASE CONFIG NOT FOUND. Add Shop and Search features are disabled.</p>`;
                     addShopBtn.disabled = true;
@@ -241,7 +241,7 @@
 
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
-                formStatus.innerHTML = `<p class="text-red-400">Error: Could not connect to the database.</p>`;
+                formStatus.innerHTML = `<p class="text-red-400">Error: Could not connect to the database. Check console for details.</p>`;
                 addShopBtn.disabled = true;
                 showSearchBtn.disabled = true;
                 searchInput.disabled = true;
