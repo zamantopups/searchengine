@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Search Engine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Roboto Mono', monospace;
+            cursor: crosshair;
+            background-color: #0d121c;
+        }
+
+        .hud-panel {
+            background-color: rgba(26, 34, 50, 0.4);
+            border: 1px solid rgba(49, 68, 100, 0.6);
+            backdrop-filter: blur(5px);
+            border-radius: 0.5rem;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .hud-text-label {
+            color: #60a5fa;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .form-input {
+            background-color: transparent;
+            border-bottom: 1px solid rgba(49, 68, 100, 0.6);
+            color: #fff;
+            padding: 0.5rem;
+            width: 100%;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .form-input:focus {
+            border-color: #60a5fa;
+        }
+
+        .btn {
+            background-color: #60a5fa;
+            color: #0d121c;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #3b82f6;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: #0d121c;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            border: 1px solid rgba(49, 68, 100, 0.6);
+            max-width: 90%;
+            max-height: 90%;
+            overflow-y: auto;
+        }
+        
+        .static-map-image {
+            width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+
+<body class="bg-[#0d121c] text-white flex items-center justify-center p-4 min-h-screen">
+
+    <div class="w-full max-w-xl">
+        <!-- Logo and Name -->
+        <div class="flex items-center justify-center mb-8">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12 text-red-500 mr-4">
+                <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm0 1.5a8.25 8.25 0 100 16.5 8.25 8.25 0 000-16.5zM12 6a6 6 0 110 12 6 6 0 010-12zm-2.25 7.5a.75.75 0 01.75-.75h3a.75.75 0 010 1.5h-3a.75.75 0 01-.75-.75zm.75-4.5a.75.75 0 000 1.5h1.5a.75.75 0 000-1.5h-1.5z" clip-rule="evenodd" />
+            </svg>
+            <h1 class="text-3xl font-bold text-gray-200">G-11 Markaz</h1>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="flex justify-center gap-4 mb-4">
+            <button id="showSearch" class="btn">Search</button>
+            <button id="showForm" class="btn hidden">Add Shop</button>
+        </div>
+
+        <!-- Search Panel -->
+        <div id="searchView" class="hud-panel">
+            <span class="hud-text-label">Search Terminal</span>
+            <input type="text" id="searchInput" placeholder="> Search by shop name or business..." class="bg-transparent border-b border-gray-500 text-white focus:outline-none py-1">
+            <div id="searchResults" class="text-sm text-gray-400 mt-2">
+                <p class="text-green-400">STATUS: Awaiting search query...</p>
+            </div>
+        </div>
+
+        <!-- Form Panel (initially hidden) -->
+        <div id="formView" class="hud-panel hidden">
+            <span class="hud-text-label">Add New Shop</span>
+            <form id="shopForm" class="flex flex-col gap-4">
+                <input type="text" id="shopName" placeholder="Shop Name" required class="form-input">
+                <input type="text" id="business" placeholder="Business (e.g., General Store)" required class="form-input">
+                <input type="text" id="shopAddress" placeholder="Shop Address" required class="form-input">
+                <input type="text" id="ownerName" placeholder="Owner Name" required class="form-input">
+                <input type="text" id="ownerNumber" placeholder="Owner Number" required class="form-input">
+                <input type="text" id="pinLocation" placeholder="Pin Location (e.g., 33.6844, 73.0479)" pattern="^-?\d{1,3}\.\d+,\s*-?\d{1,3}\.\d+$" required class="form-input">
+                <p class="text-xs text-gray-400">Please enter latitude and longitude separated by a comma (e.g., 33.6844, 73.0479)</p>
+                <button type="submit" class="btn mt-4">Add Shop</button>
+            </form>
+            <div id="formStatus" class="text-sm mt-4"></div>
+        </div>
+    </div>
+
+    <!-- Shop Details Modal -->
+    <div id="shopDetailsModal" class="modal hidden">
+        <div class="modal-content hud-panel">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="modalShopName" class="text-xl font-bold text-blue-400"></h2>
+                <button id="closeModalBtn" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <div id="modalDetails" class="text-sm text-gray-300 flex flex-col gap-2">
+                <!-- Shop details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, query, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Log all Firestore debug messages to the console
+        setLogLevel('Debug');
+
+        const searchView = document.getElementById('searchView');
+        const formView = document.getElementById('formView');
+        const showSearchBtn = document.getElementById('showSearch');
+        const showFormBtn = document.getElementById('showForm');
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+        const shopForm = document.getElementById('shopForm');
+        const formStatus = document.getElementById('formStatus');
+
+        const shopDetailsModal = document.getElementById('shopDetailsModal');
+        const modalShopName = document.getElementById('modalShopName');
+        const modalDetails = document.getElementById('modalDetails');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+
+        let shops = [];
+        let db, auth, userId;
+
+        // Firebase variables
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // --- View Switching ---
+        function showView(view) {
+            searchView.classList.add('hidden');
+            formView.classList.add('hidden');
+            if (view === 'search') {
+                searchView.classList.remove('hidden');
+            } else if (view === 'form') {
+                formView.classList.remove('hidden');
+            }
+        }
+
+        showSearchBtn.addEventListener('click', () => showView('search'));
+        showFormBtn.addEventListener('click', () => showView('form'));
+
+        // --- Firebase Initialization and Authentication ---
+        const initFirebase = async () => {
+            if (!firebaseConfig.apiKey) {
+                searchResults.innerHTML = '<p class="text-red-400">STATUS: ERROR - FIREBASE CONFIG NOT FOUND</p>';
+                return;
+            }
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Sign in with the provided token or anonymously
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        // Check if the user is authenticated with the owner's token
+                        if (initialAuthToken) {
+                            showFormBtn.classList.remove('hidden');
+                        }
+                        // Start listening for shop data
+                        listenForShops();
+                    } else {
+                        searchResults.innerHTML = '<p class="text-red-400">STATUS: ERROR - AUTHENTICATION FAILED</p>';
+                    }
+                });
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                searchResults.innerHTML = `<p class="text-red-400">STATUS: ERROR - ${error.message}</p>`;
+            }
+        };
+
+        // --- Firestore Data Handling ---
+        const listenForShops = () => {
+            if (!db) return;
+            // Public data is shared by all users, so we store it in a public collection
+            const shopsCollectionRef = collection(db, `artifacts/${appId}/public/data/shops`);
+            
+            onSnapshot(shopsCollectionRef, (querySnapshot) => {
+                shops = [];
+                querySnapshot.forEach((doc) => {
+                    shops.push({ id: doc.id, ...doc.data() });
+                });
+                renderSearchResults(searchInput.value);
+            }, (error) => {
+                console.error("Error listening for shops:", error);
+                searchResults.innerHTML = `<p class="text-red-400">STATUS: ERROR - ${error.message}</p>`;
+            });
+        };
+
+        const renderSearchResults = (query) => {
+            searchResults.innerHTML = '';
+            const lowerCaseQuery = query.toLowerCase().trim();
+
+            if (lowerCaseQuery === '') {
+                searchResults.innerHTML = '<p class="text-green-400">STATUS: Awaiting search query...</p>';
+                return;
+            }
+
+            const results = shops.filter(shop => 
+                shop.shopName.toLowerCase().includes(lowerCaseQuery) ||
+                shop.business.toLowerCase().includes(lowerCaseQuery)
+            );
+
+            if (results.length > 0) {
+                results.forEach(shop => {
+                    // Only show the shop name as a clickable link
+                    searchResults.innerHTML += `
+                        <button class="text-blue-400 hover:text-blue-300 text-left w-full py-1" onclick="showShopDetails('${shop.id}')">${shop.shopName}</button>
+                    `;
+                });
+            } else {
+                searchResults.innerHTML = '<p class="text-red-400">STATUS: NO MATCHES</p>';
+            }
+        };
+
+        // --- Show Shop Details Modal ---
+        const showShopDetails = (shopId) => {
+            const shop = shops.find(s => s.id === shopId);
+            if (!shop) {
+                console.error("Shop not found with ID:", shopId);
+                return;
+            }
+            
+            // Check for valid coordinates before creating the image URL
+            const [lat, lon] = shop.pinLocation.split(',').map(coord => parseFloat(coord.trim()));
+            const mapHtml = (isNaN(lat) || isNaN(lon)) 
+                ? `<p class="text-red-400">Invalid location format.</p>` 
+                : `<a href="#" onclick="showMapInNewTab(event, '${shop.pinLocation}')" class="hover:underline cursor-pointer">
+                    <img src="https://static-maps.yandex.ru/1.x/?lang=en_US&ll=${lon},${lat}&z=16&l=map&size=500,250&pt=${lon},${lat},pm2rdl" alt="Static map of location" class="static-map-image">
+                </a>`;
+
+            modalShopName.textContent = shop.shopName;
+            modalDetails.innerHTML = `
+                <p><span class="text-cyan-400">Business:</span> <span class="text-white">${shop.business}</span></p>
+                <p><span class="text-cyan-400">Address:</span> <span class="text-white">${shop.shopAddress}</span></p>
+                <p><span class="text-cyan-400">Owner:</span> <span class="text-white">${shop.ownerName}</span></p>
+                <p><span class="text-cyan-400">Number:</span> <span class="text-white">${shop.ownerNumber}</span></p>
+                <p><span class="text-cyan-400">Location:</span> <span class="text-blue-400">${shop.pinLocation}</span></p>
+                ${mapHtml}
+                <p class="text-xs text-gray-500 mt-2">Added by User ID: ${shop.addedByUserId}</p>
+            `;
+            
+            shopDetailsModal.classList.remove('hidden');
+        };
+
+        // --- Open Map in New Tab ---
+        const showMapInNewTab = (event, location) => {
+            event.preventDefault(); // Prevent the default link behavior
+            const [lat, lon] = location.split(',').map(coord => parseFloat(coord.trim()));
+            if (isNaN(lat) || isNaN(lon)) {
+                console.error("Invalid coordinates for map link:", location);
+                return;
+            }
+            const url = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=16/${lat}/${lon}`;
+            window.open(url, '_blank');
+        };
+        
+        // --- Event Listeners ---
+        searchInput.addEventListener('input', (e) => {
+            renderSearchResults(e.target.value);
+        });
+
+        shopForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            formStatus.innerHTML = '<p class="text-yellow-400">Saving shop...</p>';
+
+            const shopData = {
+                shopName: document.getElementById('shopName').value,
+                business: document.getElementById('business').value,
+                shopAddress: document.getElementById('shopAddress').value,
+                ownerName: document.getElementById('ownerName').value,
+                ownerNumber: document.getElementById('ownerNumber').value,
+                pinLocation: document.getElementById('pinLocation').value,
+                addedByUserId: userId,
+                timestamp: new Date()
+            };
+
+            try {
+                // Add a new document with a generated ID to the public shops collection
+                const shopsCollectionRef = collection(db, `artifacts/${appId}/public/data/shops`);
+                await addDoc(shopsCollectionRef, shopData);
+                formStatus.innerHTML = '<p class="text-green-400">Shop added successfully!</p>';
+                shopForm.reset();
+            } catch (error) {
+                console.error("Error adding shop:", error);
+                formStatus.innerHTML = `<p class="text-red-400">Error: ${error.message}</p>`;
+            }
+        });
+        
+        closeModalBtn.addEventListener('click', () => {
+            shopDetailsModal.classList.add('hidden');
+        });
+
+        // Make functions available in the global scope
+        window.showShopDetails = showShopDetails;
+        window.showMapInNewTab = showMapInNewTab;
+
+        // Initialize Firebase on window load
+        window.onload = initFirebase;
+    </script>
+
+</body>
+</html>
