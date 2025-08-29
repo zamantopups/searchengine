@@ -190,6 +190,7 @@
         let auth;
         let shops = [];
         let userId = 'localUser'; // Placeholder until auth is ready
+        let isDatabaseReady = false;
 
         // --- DOM Elements ---
         const searchView = document.getElementById('searchView');
@@ -210,10 +211,14 @@
         // --- Firebase Initialization and Authentication ---
         async function initializeFirebase() {
             try {
-                // Check if firebase config is valid
                 if (!firebaseConfig.apiKey) {
-                    formStatus.innerHTML = `<p class="text-red-400">ERROR: FIREBASE CONFIG NOT FOUND. Please ensure the app is configured correctly.</p>`;
-                    return; // Exit if config is missing
+                    console.error("Firebase config not found. Running in local mode.");
+                    formStatus.innerHTML = `<p class="text-red-400">ERROR: FIREBASE CONFIG NOT FOUND. Add Shop and Search features are disabled.</p>`;
+                    addShopBtn.disabled = true;
+                    showSearchBtn.disabled = true;
+                    searchInput.disabled = true;
+                    isDatabaseReady = false;
+                    return; 
                 }
 
                 const app = initializeApp(firebaseConfig);
@@ -227,6 +232,7 @@
                 }
                 
                 userId = auth.currentUser?.uid || crypto.randomUUID();
+                isDatabaseReady = true;
                 
                 console.log("Firebase initialized and user authenticated:", userId);
                 
@@ -236,11 +242,16 @@
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
                 formStatus.innerHTML = `<p class="text-red-400">Error: Could not connect to the database.</p>`;
+                addShopBtn.disabled = true;
+                showSearchBtn.disabled = true;
+                searchInput.disabled = true;
             }
         }
         
         // --- Real-time Data Listener ---
         function setupRealtimeListener() {
+            if (!isDatabaseReady) return;
+
             const shopsCollection = collection(db, `artifacts/${appId}/public/data/shops`);
             onSnapshot(shopsCollection, (snapshot) => {
                 shops = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -264,6 +275,11 @@
 
         // --- Render Search Results ---
         const renderSearchResults = (query) => {
+            if (!isDatabaseReady) {
+                searchResults.innerHTML = '<p class="text-red-400">STATUS: Database not connected.</p>';
+                return;
+            }
+
             const lowerCaseQuery = query.toLowerCase().trim();
             const results = shops.filter(shop =>
                 shop.shopName.toLowerCase().includes(lowerCaseQuery) ||
@@ -341,6 +357,12 @@
 
         shopForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            if (!isDatabaseReady) {
+                formStatus.innerHTML = '<p class="text-red-400">Database not connected. Cannot add shop.</p>';
+                return;
+            }
+
             formStatus.innerHTML = '<p class="text-yellow-400">Adding shop...</p>';
             addShopBtn.disabled = true;
 
