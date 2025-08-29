@@ -210,6 +210,12 @@
         // --- Firebase Initialization and Authentication ---
         async function initializeFirebase() {
             try {
+                // Check if firebase config is valid
+                if (!firebaseConfig.apiKey) {
+                    formStatus.innerHTML = `<p class="text-red-400">ERROR: FIREBASE CONFIG NOT FOUND. Please ensure the app is configured correctly.</p>`;
+                    return; // Exit if config is missing
+                }
+
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
